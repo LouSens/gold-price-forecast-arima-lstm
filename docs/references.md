@@ -34,10 +34,9 @@ IEEE style. The same list, numbered identically, is used in `reports/laporan.md`
 
 ## Data
 
-[14] aminasalamt, "Gold Price Master Dataset (2015–2026) XAU/USD," Kaggle. [Online]. Available: https://www.kaggle.com/datasets/aminasalamt/gold-price-master-dataset-2015-2026-lxauusd
+[14] Yahoo Finance, "Gold Futures (GC=F) historical data," Yahoo Finance. [Online]. Available: https://finance.yahoo.com/quote/GC%3DF/history/ (accessed Sep. 17, 2026).
 
-> `aminasalamt` is the Kaggle handle. Replace it with the author's display name from the Kaggle page and add the
-> access date.
+[15] R. Aroussi, "yfinance: Download market data from Yahoo! Finance's API," GitHub repository. [Online]. Available: https://github.com/ranaroussi/yfinance
 
 ## Further reading
 

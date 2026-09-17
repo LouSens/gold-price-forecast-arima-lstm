@@ -33,7 +33,7 @@ Five stars requires **all six** additional criteria; the report template in this
 ## 3. Step-by-step
 
 ```bash
-# 1) Get the data (Kaggle CSV -> data/raw/xauusd_daily.csv), or:
+# 1) Get the data (Yahoo Finance GC=F -> data/raw/xauusd_daily.csv)
 python scripts/download_data.py
 
 # 2) Build and execute the notebook (outputs saved into the .ipynb, figures into reports/figures/)
@@ -61,4 +61,4 @@ the Markdown is read"); without it, every image link in `laporan.md` would be br
 - Keep numbers in the report identical to the executed notebook output (reviewers cross-check).
 - Do not claim the LSTM "wins" unless the Diebold-Mariano p-value supports it; an honest "no significant improvement
   over the random walk" is a legitimate and well-supported result.
-- Do not include the raw CSV in the ZIP unless required; cite and link the dataset instead.
+- Do not include the raw CSV in the ZIP unless required; cite and link the Yahoo Finance source instead.

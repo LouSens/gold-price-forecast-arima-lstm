@@ -4,18 +4,18 @@
 
 | Property | Value |
 |---|---|
-| Name | Gold Price Master Dataset (2015–2026) XAU/USD |
-| URL | https://www.kaggle.com/datasets/aminasalamt/gold-price-master-dataset-2015-2026-lxauusd |
-| Original source | Yahoo Finance, collected with `yfinance` |
-| Fallback | `python scripts/download_data.py` (Yahoo ticker `GC=F`, COMEX gold futures, same period) |
+| Name | Gold Futures (GC=F) historical data |
+| URL | https://finance.yahoo.com/quote/GC%3DF/history/ |
+| Source | Yahoo Finance, downloaded with `yfinance` via `python scripts/download_data.py` |
+| Accessed | 2026-09-17 |
 | Frequency | Daily (trading days) |
 | Coverage | 2015-01-02 – 2026-04-29, 2,847 rows × 6 columns |
 | Format | Single CSV |
 | Licence | Research and educational use only (Yahoo Finance terms); do not redistribute the raw file |
 
 > **Spot vs futures.** Yahoo's gold series is the front-month COMEX futures contract (`GC=F`), which tracks spot XAU/USD
-> closely but not exactly (a small carry premium and roll effects). The report refers to the target as the "gold price
-> (XAU/USD)" in line with the dataset title and notes this nuance.
+> closely but not exactly (a small carry premium and roll effects). The report uses it as a proxy for the XAU/USD gold
+> price and states this explicitly.
 
 Profile of the file used in this project (from the executed notebook): no missing values, no duplicate dates, no
 non-positive prices, no inconsistent OHLC bars. Calendar gaps between rows: 1 day ×2,229, 2 days ×26, 3 days ×510,

@@ -20,8 +20,8 @@ update the other (the unit tests in `tests/` guard the `src/` implementation).
 ```mermaid
 flowchart LR
     subgraph Ingestion
-        K[Kaggle CSV<br/>Gold Price Master Dataset] --> L
-        Y[Yahoo Finance GC=F<br/>scripts/download_data.py] -.fallback.-> L
+        Y[Yahoo Finance GC=F<br/>scripts/download_data.py] --> K[data/raw/xauusd_daily.csv]
+        K --> L
         L[data_loader<br/>schema normalisation]
     end
     subgraph Preparation
@@ -49,7 +49,7 @@ flowchart LR
 |---|---|---|
 | `config.py` | Typed dataclass configuration: paths, date range, split fractions, grids | `Config` |
 | `utils.py` | Seeding, device selection, logging, timing | `set_seed`, `get_device`, `timer` |
-| `data_loader.py` | Read Kaggle / yfinance / investing-style CSVs into `Date, Open, High, Low, Close[, Volume]`; optional Yahoo download | `read_price_csv`, `download_yahoo`, `resolve_data_path` |
+| `data_loader.py` | Read yfinance-style and other daily OHLCV CSVs into `Date, Open, High, Low, Close[, Volume]`; optional Yahoo download | `read_price_csv`, `download_yahoo`, `resolve_data_path` |
 | `preprocessing.py` | Cleaning with a `QualityReport`, ADF test and differencing order, chronological splitting | `clean_prices`, `adf_test`, `select_differencing_order`, `chronological_split` |
 | `features.py` | Supervised framing at forecast origin `t`, sliding windows, return→price conversion | `build_feature_frame`, `make_sequences`, `returns_to_price` |
 | `models/baseline.py` | Naive random walk | `NaiveForecaster` |

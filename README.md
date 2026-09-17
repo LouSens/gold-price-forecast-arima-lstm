@@ -66,11 +66,10 @@ accuracy at a fraction of the compute cost. This project tests the question on o
 
 | Property | Value |
 |---|---|
-| Name | [Gold Price Master Dataset (2015–2026) XAU/USD](https://www.kaggle.com/datasets/aminasalamt/gold-price-master-dataset-2015-2026-lxauusd) |
-| Origin | Yahoo Finance via `yfinance` |
+| Name | [Gold Futures (GC=F) historical data](https://finance.yahoo.com/quote/GC%3DF/history/), COMEX front-month contract, used as a proxy for XAU/USD |
+| Origin | Yahoo Finance, downloaded with [`yfinance`](https://github.com/ranaroussi/yfinance) by `scripts/download_data.py` (accessed 2026-09-17) |
 | Granularity | Daily trading days, 2015-01-02 – 2026-04-29 (2,847 rows × 6 columns) |
 | Columns | `Date, Open, High, Low, Close, Volume` |
-| Fallback | `scripts/download_data.py` (Yahoo `GC=F`, same period) |
 | Licence | Research and education only; raw data is git-ignored and not redistributed |
 
 See [docs/data_dictionary.md](docs/data_dictionary.md) for all raw and engineered variables.
@@ -80,8 +79,8 @@ See [docs/data_dictionary.md](docs/data_dictionary.md) for all raw and engineere
 ```mermaid
 flowchart TB
     subgraph L1[1 · Ingestion]
-        KG[Kaggle CSV] --> DL[data_loader.py<br/>schema normalisation]
-        YF[Yahoo Finance GC=F] -. fallback .-> DL
+        YF[Yahoo Finance GC=F<br/>scripts/download_data.py] --> CSV[data/raw/xauusd_daily.csv]
+        CSV --> DL[data_loader.py<br/>schema normalisation]
     end
     subgraph L2[2 · Preparation]
         DL --> PP[preprocessing.py<br/>clean · dedupe · filter · ADF]
@@ -220,7 +219,7 @@ python -m ipykernel install --user --name gold-forecast --display-name "Python (
 
 ### Get the data
 
-Download the Kaggle CSV into `data/raw/xauusd_daily.csv` (see [data/README.md](data/README.md)), or use the fallback:
+Download the Yahoo Finance series into `data/raw/xauusd_daily.csv` (see [data/README.md](data/README.md)):
 
 ```bash
 python scripts/download_data.py
@@ -263,9 +262,9 @@ Rows are ordered by **validation RMSE**, the model-selection criterion. The test
 
 | Model | Val RMSE | Test RMSE | Test MAE | Test MAPE (%) | Directional Acc. (%) | RMSE vs Naive | DM p-value | Time (s) |
 |---|---|---|---|---|---|---|---|---|
-| **LSTM (W=30, H=64, L=2), selected** | **24.58** | 75.65 | **49.60** | **1.207** | 56.38 | −0.20 % | 0.338 | 17.34 |
-| XGBoost (depth 5, lr 0.05, 30 trees) | 24.67 | **75.55** | 49.76 | 1.209 | **57.45** | −0.35 % | 0.781 | 1.45 |
-| ARIMA(0,1,0) | 24.75 | 75.81 | 49.82 | 1.212 | n/a | 0.00 % | 0.979 | 4.27 |
+| **LSTM (W=30, H=64, L=2), selected** | **24.58** | 75.65 | **49.60** | **1.207** | 56.38 | −0.20 % | 0.338 | 19.69 |
+| XGBoost (depth 5, lr 0.05, 30 trees) | 24.67 | **75.55** | 49.76 | 1.209 | **57.45** | −0.35 % | 0.781 | 0.94 |
+| ARIMA(0,1,0) | 24.75 | 75.81 | 49.82 | 1.212 | n/a | 0.00 % | 0.979 | 4.13 |
 | Naive | 24.75 | 75.81 | 49.82 | 1.212 | n/a | 0.00 % | – | 0.0001 |
 
 **Key findings**
@@ -289,7 +288,7 @@ Rows are ordered by **validation RMSE**, the model-selection criterion. The test
 python -m pytest
 ```
 
-The suite covers CSV layout parsing (Kaggle, multi-row yfinance headers, aliases, timezones), cleaning, ordered splits,
+The suite covers CSV layout parsing (plain OHLCV, multi-row yfinance headers, aliases, timezones), cleaning, ordered splits,
 **no-look-ahead feature construction**, sliding windows, metric formulas, the Diebold-Mariano test, and smoke tests for
 all four models (the LSTM runs on CPU).
 
