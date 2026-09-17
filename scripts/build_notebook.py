@@ -1,7 +1,7 @@
 """Convert the percent-format notebook source (.py) into a Jupyter notebook (.ipynb), optionally executing it.
 
-The .py file is the single source of truth: it is both the Dicoding ".py" deliverable and the
-input for the ".ipynb" deliverable, so the two can never drift apart.
+The .py file is the single source of truth: it is both the plain-script version of the notebook and the
+input for the .ipynb, so the two can never drift apart.
 
     python scripts/build_notebook.py              # build notebooks/gold_price_forecasting.ipynb
     python scripts/build_notebook.py --execute --kernel current   # build and run with this Python (outputs saved)

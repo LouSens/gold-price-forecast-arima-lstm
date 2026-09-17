@@ -1,14 +1,14 @@
-"""Package the Dicoding submission ZIP.
+"""Package the project report bundle (report, notebook, script and figures) as a ZIP.
 
 Contents (flat layout so relative image links in the report keep working):
 
-    submission_gold_forecast.zip
+    gold_forecast_report.zip
     ├── laporan.md                     (reports/laporan.md)
     ├── figures/*.png                  (reports/figures/*.png, excluding the pipeline/ subfolder)
     ├── gold_price_forecasting.ipynb   (must already be executed)
     └── gold_price_forecasting.py
 
-    python scripts/make_submission.py
+    python scripts/package_report.py
 """
 
 from __future__ import annotations
@@ -23,7 +23,7 @@ REPORT = ROOT / "reports" / "laporan.md"
 FIGURES = ROOT / "reports" / "figures"
 NOTEBOOK = ROOT / "notebooks" / "gold_price_forecasting.ipynb"
 SCRIPT = ROOT / "notebooks" / "gold_price_forecasting.py"
-OUT = ROOT / "dist" / "submission_gold_forecast.zip"
+OUT = ROOT / "dist" / "gold_forecast_report.zip"
 
 
 def check() -> list[str]:
@@ -33,6 +33,13 @@ def check() -> list[str]:
         code = [c for c in nb["cells"] if c["cell_type"] == "code"]
         if not code or any(c.get("execution_count") is None for c in code):
             problems.append("notebook has unexecuted cells (run: python scripts/build_notebook.py --execute)")
+        if any(o.get("output_type") == "error" for c in code for o in c.get("outputs", [])):
+            problems.append("notebook contains error outputs")
+        cells = nb["cells"]
+        undocumented = [i for i, c in enumerate(cells)
+                        if c["cell_type"] == "code" and (i == 0 or cells[i - 1]["cell_type"] != "markdown")]
+        if undocumented:
+            problems.append(f"code cells without a preceding text cell: {undocumented}")
     if REPORT.exists() and "[ISI" in REPORT.read_text(encoding="utf-8"):
         problems.append("reports/laporan.md still contains [ISI ...] placeholders")
     if not list(FIGURES.glob("*.png")):
@@ -43,7 +50,7 @@ def check() -> list[str]:
 def main() -> None:
     problems = check()
     if problems:
-        print("Cannot package submission:\n  - " + "\n  - ".join(problems))
+        print("Cannot package report bundle:\n  - " + "\n  - ".join(problems))
         sys.exit(1)
     OUT.parent.mkdir(parents=True, exist_ok=True)
     with zipfile.ZipFile(OUT, "w", zipfile.ZIP_DEFLATED) as zf:
