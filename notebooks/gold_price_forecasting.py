@@ -108,12 +108,12 @@ def save_fig(fig, name):
 
 # %% [markdown]
 # ### Experiment configuration
-# All tunables in one place. The analysis window matches the Kaggle dataset coverage (Jan 2015 – Apr 2026).
+# All tunables in one place. The analysis window is January 2015 – April 2026 (`END_DATE` is exclusive).
 # Splits are **chronological**: 80 % train, 10 % validation (model selection / early stopping), 10 % test (final, untouched).
 
 # %%
 START_DATE, END_DATE = "2015-01-01", "2026-04-30"
-TICKER = "GC=F"  # Yahoo Finance gold futures, used only if the Kaggle CSV is absent
+TICKER = "GC=F"  # Yahoo Finance COMEX gold futures, the data source of this project
 TRAIN_FRAC, VAL_FRAC = 0.80, 0.10
 N_LAGS, WINDOWS = 10, (5, 10, 20)
 
@@ -126,13 +126,14 @@ LSTM_DROPOUT, LSTM_BATCH, LSTM_LR, LSTM_EPOCHS, LSTM_PATIENCE = 0.2, 64, 1e-3, 1
 # %% [markdown]
 # ## 4. Data Loading
 #
-# **Dataset:** *Gold Price Master Dataset (2015–2026) XAU/USD* —
-# https://www.kaggle.com/datasets/aminasalamt/gold-price-master-dataset-2015-2026-lxauusd
-# (Yahoo Finance data collected with `yfinance`).
+# **Dataset:** daily COMEX gold futures (`GC=F`) from **Yahoo Finance** —
+# https://finance.yahoo.com/quote/GC%3DF/history/
+# downloaded with the `yfinance` library by `python scripts/download_data.py` (accessed 17 September 2026).
+# `GC=F` is the front-month gold futures contract and is used as a close proxy for the XAU/USD spot price.
 #
-# Place the CSV at `data/raw/xauusd_daily.csv`. If it is missing, the cell falls back to downloading the same
-# underlying Yahoo Finance series (`GC=F`) for the same period. The reader handles common CSV layouts
-# (plain Kaggle headers, the multi-row `yfinance` header, alias column names, thousands separators).
+# The cell reads `data/raw/xauusd_daily.csv`. If the file is missing, it downloads the same series (`GC=F`,
+# `START_DATE` to `END_DATE`) directly. The reader handles common CSV layouts (plain OHLCV headers, the multi-row
+# `yfinance` header, alias column names, thousands separators).
 
 # %%
 ALIASES = {"date": "Date", "datetime": "Date", "timestamp": "Date", "open": "Open", "high": "High", "low": "Low",
