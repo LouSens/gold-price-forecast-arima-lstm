@@ -6,7 +6,7 @@ educational use only.
 ```
 data/
 ├── raw/
-│   └── xauusd_daily.csv      <- written by scripts/download_data.py
+│   └── xauusd_daily.csv      <- downloaded by the notebook on first run (or scripts/download_data.py)
 └── processed/
     └── xauusd_clean.csv      <- written by the notebook / pipeline
 ```
@@ -15,8 +15,12 @@ data/
 
 Daily COMEX gold futures (`GC=F`) from Yahoo Finance: https://finance.yahoo.com/quote/GC%3DF/history/
 
+No manual download is needed: the notebook's Data Loading step downloads `GC=F` (2015-01-01 to 2026-04-30, end date
+exclusive) with `yfinance` if the CSV is missing, and creates `data/raw/` and `data/processed/` itself. The same download
+is available from the command line (optional):
+
 ```bash
-python scripts/download_data.py            # GC=F, 2015-01-01 to 2026-04-30 (end date exclusive)
+python scripts/download_data.py
 ```
 
 The file used in this project was downloaded on 2026-09-17 and contains 2,847 rows (2015-01-02 to 2026-04-29).

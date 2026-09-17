@@ -7,11 +7,11 @@ design decisions that keep the evaluation free of look-ahead bias.
 
 | Entry point | File | Audience | Purpose |
 |---|---|---|---|
-| **Submission notebook** | `notebooks/gold_price_forecasting.py` → `.ipynb` | Dicoding reviewer, readers | Self-contained narrative with text cells for each stage; produces the figures and numbers used in `reports/laporan.md` |
+| **Research notebook** | `notebooks/gold_price_forecasting.py` → `.ipynb` | Reviewers, readers | Self-contained narrative with text cells for each stage; produces the figures and numbers used in `reports/laporan.md` |
 | **Modular pipeline** | `src/` package, `python -m src.pipeline` | Developers | Reusable, unit-tested implementation of the same methodology for re-runs, extensions and automation |
 
 The notebook deliberately does not import `src/`, so it can be uploaded to Colab or reviewed as a single file.
-The percent-format `.py` is the single source of truth for both notebook deliverables (`scripts/build_notebook.py`
+The percent-format `.py` is the single source of truth for both notebook formats (`scripts/build_notebook.py`
 generates the `.ipynb`). Both entry points share the same splits, features, grids and metrics; if one is changed,
 update the other (the unit tests in `tests/` guard the `src/` implementation).
 

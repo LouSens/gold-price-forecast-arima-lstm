@@ -59,7 +59,7 @@ order such as (0,1,0). This is a valid, reportable finding that answers the prob
 |---|---|
 | ARIMA close to a random walk | AIC selected ARIMA(0,1,0); Ljung-Box p-values 0.39 / 0.32 / 0.13 at lags 5 / 10 / 20 |
 | ML models within a fraction of a percent of Naive | XGBoost −0.35 %, LSTM −0.20 % RMSE; DM p-values 0.781 and 0.338 |
-| Little learnable signal | XGBoost early-stopped at 3–42 trees and its feature importances are nearly uniform; LSTM validation loss bottomed at epoch 2 and its test forecasts are always "up" |
+| Little learnable signal | XGBoost early-stopped at 4–43 boosting rounds (`best_iteration` is zero-based, so rounds = `best_iteration` + 1) and its feature importances are nearly uniform; LSTM validation loss bottomed at epoch 2 and its test forecasts are always "up" |
 | Test period harder than validation | Annualised volatility 27.5 % (test) vs 15.4 % (validation); std of daily USD change 75.81 vs 24.48 |
 
 Selected by validation RMSE: LSTM (test RMSE 75.65, −0.20 % vs Naive, p = 0.338, not significant).
