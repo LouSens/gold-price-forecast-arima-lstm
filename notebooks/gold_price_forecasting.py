@@ -44,8 +44,9 @@
 # 4. **LSTM** — recurrent network on sliding windows of standardised log returns, tuned over window length,
 #    hidden units and layers, with early stopping.
 #
-# All solutions are measured with the same metrics on the same test set; the model with the lowest test RMSE
-# that also beats the naive baseline is selected.
+# The model is **selected on the validation set** (lowest validation RMSE); the test set is kept only for the final,
+# one-time evaluation. All solutions are then measured with the same metrics on the same test set, and the selected
+# model is recommended only if it beats the naive baseline significantly (Diebold-Mariano p < 0.05).
 
 # %% [markdown]
 # ## 3. Setup
@@ -90,10 +91,12 @@ torch.backends.cudnn.benchmark = False
 
 PROJECT_ROOT = Path.cwd().parent if Path.cwd().name == "notebooks" else Path.cwd()
 DATA_FILE = PROJECT_ROOT / "data" / "raw" / "xauusd_daily.csv"
+PROCESSED_DIR = PROJECT_ROOT / "data" / "processed"
 FIG_DIR = PROJECT_ROOT / "reports" / "figures"
 RESULTS_DIR = PROJECT_ROOT / "results"
 MODELS_DIR = PROJECT_ROOT / "models"
-for d in (DATA_FILE.parent, FIG_DIR, RESULTS_DIR, MODELS_DIR):
+# Create every output directory up front so the notebook runs in a fresh environment.
+for d in (DATA_FILE.parent, PROCESSED_DIR, FIG_DIR, RESULTS_DIR, MODELS_DIR):
     d.mkdir(parents=True, exist_ok=True)
 
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
@@ -128,12 +131,14 @@ LSTM_DROPOUT, LSTM_BATCH, LSTM_LR, LSTM_EPOCHS, LSTM_PATIENCE = 0.2, 64, 1e-3, 1
 #
 # **Dataset:** daily COMEX gold futures (`GC=F`) from **Yahoo Finance** —
 # https://finance.yahoo.com/quote/GC%3DF/history/
-# downloaded with the `yfinance` library by `python scripts/download_data.py` (accessed 17 September 2026).
+# downloaded with the `yfinance` library (accessed 17 September 2026).
 # `GC=F` is the front-month gold futures contract and is used as a close proxy for the XAU/USD spot price.
 #
-# The cell reads `data/raw/xauusd_daily.csv`. If the file is missing, it downloads the same series (`GC=F`,
-# `START_DATE` to `END_DATE`) directly. The reader handles common CSV layouts (plain OHLCV headers, the multi-row
-# `yfinance` header, alias column names, thousands separators).
+# **The notebook needs no other files.** The cell reads `data/raw/xauusd_daily.csv` if it exists; otherwise it downloads
+# the series itself (`GC=F`, `START_DATE` to `END_DATE`, end date exclusive) with `yfinance` and saves it to that path.
+# (In the full repository, `scripts/download_data.py` does the same download from the command line, but it is optional.)
+# The reader handles common CSV layouts (plain OHLCV headers, the multi-row `yfinance` header, alias column names,
+# thousands separators).
 
 # %%
 ALIASES = {"date": "Date", "datetime": "Date", "timestamp": "Date", "open": "Open", "high": "High", "low": "Low",
@@ -364,7 +369,7 @@ for col in ("Open", "High", "Low"):
 df = df.set_index("Date").loc[START_DATE:END_DATE]
 print(f"Removed {n_dup} duplicate dates and {n_missing_close} invalid closes -> {len(df):,} clean rows "
       f"({df.index.min().date()} to {df.index.max().date()})")
-df.to_csv(PROJECT_ROOT / "data" / "processed" / "xauusd_clean.csv")
+df.to_csv(PROCESSED_DIR / "xauusd_clean.csv")
 
 # %% [markdown]
 # ### 6.2 Log-return transformation
@@ -428,15 +433,22 @@ frame.head()
 # Random shuffling would leak future information into training. The split is by time:
 # the **validation** set drives hyperparameter selection and early stopping; the **test** set is used exactly once for
 # the final comparison.
+#
+# **Origin vs target dates.** Each row is a forecast *origin* `t`; the value being predicted is the close on the
+# *next trading day* `t+1`. The table therefore reports both periods: for example, test origins run to the second-to-last
+# trading day, while the predicted (target) prices run to the last trading day in the data.
 
 # %%
 n = len(frame)
 n_train, n_val = int(n * TRAIN_FRAC), int(n * VAL_FRAC)
 train, val, test = frame.iloc[:n_train], frame.iloc[n_train:n_train + n_val], frame.iloc[n_train + n_val:]
+next_trading_day = lambda d: df.index[df.index.get_loc(d) + 1]
 split_info = pd.DataFrame({
     "rows": [len(train), len(val), len(test)],
-    "start": [s.index[0].date() for s in (train, val, test)],
-    "end": [s.index[-1].date() for s in (train, val, test)],
+    "origin start": [s.index[0].date() for s in (train, val, test)],
+    "origin end": [s.index[-1].date() for s in (train, val, test)],
+    "target start": [next_trading_day(s.index[0]).date() for s in (train, val, test)],
+    "target end": [next_trading_day(s.index[-1]).date() for s in (train, val, test)],
     "min close": [s["close"].min() for s in (train, val, test)],
     "max close": [s["close"].max() for s in (train, val, test)],
 }, index=["train", "validation", "test"])
@@ -641,6 +653,9 @@ save_fig(fig, "06_arima_residuals.png")
 #
 # Selection criterion: validation **price** RMSE.
 #
+# **Boosting rounds.** XGBoost's `best_iteration` is a **zero-based** index. A model with `best_iteration = k` predicts
+# with the first `k + 1` boosting rounds (trees), so the table reports `boosting_rounds = best_iteration + 1`.
+#
 # - **Pros:** captures non-linear interactions, robust to feature scale, fast on CPU, feature importance for insight.
 # - **Cons:** cannot extrapolate beyond training targets (mitigated by predicting returns), needs manual feature
 #   engineering, no native notion of temporal order.
@@ -655,7 +670,8 @@ for values in itertools.product(*(XGB_GRID[k] for k in keys)):
                          tree_method="hist", random_state=SEED, n_jobs=-1, **params)
     model.fit(train[FEATURES], train["target_return"], eval_set=[(val[FEATURES], val["target_return"])], verbose=False)
     score = rmse(y_val, to_price(cur_val, model.predict(val[FEATURES])))
-    records.append({**params, "best_iteration": model.best_iteration, "val_RMSE": score})
+    records.append({**params, "best_iteration": model.best_iteration, "boosting_rounds": model.best_iteration + 1,
+                    "val_RMSE": score})
     if score < best_score:
         best_score, best_xgb, XGB_PARAMS = score, model, params
 xgb_grid = pd.DataFrame(records).sort_values("val_RMSE").reset_index(drop=True)
@@ -664,7 +680,8 @@ display(xgb_grid.head(8))
 predictions["XGBoost"] = to_price(cur_test, best_xgb.predict(test[FEATURES]))
 val_predictions["XGBoost"] = to_price(cur_val, best_xgb.predict(val[FEATURES]))
 timings["XGBoost"] = time.perf_counter() - t0
-print(f"Best XGBoost params: {XGB_PARAMS} (iterations={best_xgb.best_iteration}) | val RMSE {best_score:.3f} | {timings['XGBoost']:.1f}s")
+print(f"Best XGBoost params: {XGB_PARAMS} | best_iteration={best_xgb.best_iteration} (zero-based) -> "
+      f"{best_xgb.best_iteration + 1} boosting rounds | val RMSE {best_score:.3f} | {timings['XGBoost']:.1f}s")
 
 # %% [markdown]
 # **Feature importance.** Gain-based importance of the selected XGBoost model shows which engineered features the trees
@@ -816,8 +833,12 @@ metrics["RMSE vs Naive (%)"] = (metrics["Test RMSE"] / metrics.loc["Naive", "Tes
 display(metrics)
 
 metrics.round(4).to_csv(RESULTS_DIR / "metrics.csv")
-pd.DataFrame({"origin_date": test.index, "actual_next_close": y_test, **predictions}).to_csv(
-    RESULTS_DIR / "test_predictions.csv", index=False)
+# Each forecast made at origin t predicts the close of the next trading day; keep both dates explicit.
+test_target_dates = df.index[df.index.get_indexer(test.index) + 1]
+pd.DataFrame({"origin_date": test.index, "target_date": test_target_dates, "actual_next_close": y_test,
+              **predictions}).to_csv(RESULTS_DIR / "test_predictions.csv", index=False)
+print(f"Test origins: {test.index[0].date()} to {test.index[-1].date()} | "
+      f"predicted (target) closes: {test_target_dates[0].date()} to {test_target_dates[-1].date()}")
 
 # %% [markdown]
 # Bar charts of the three error metrics on the test set make the (small) differences between models visible.
@@ -831,13 +852,14 @@ save_fig(fig, "09_metric_comparison.png")
 
 # %% [markdown]
 # ### 8.2 Forecasts on the test period
+# Forecasts are plotted on their **target dates** (the day whose close is predicted), not on the origin dates.
 
 # %%
 fig, axes = plt.subplots(2, 1, figsize=(14, 9))
 for ax, sl, title in [(axes[0], slice(None), "Full test period"), (axes[1], slice(-60, None), "Last 60 trading days")]:
-    ax.plot(test.index[sl], y_test[sl], color="black", lw=1.8, label="Actual")
+    ax.plot(test_target_dates[sl], y_test[sl], color="black", lw=1.8, label="Actual")
     for name, pred in predictions.items():
-        ax.plot(test.index[sl], pred[sl], lw=1, alpha=0.85, label=name)
+        ax.plot(test_target_dates[sl], pred[sl], lw=1, alpha=0.85, label=name)
     ax.set_title(f"Actual vs one-step-ahead forecasts — {title}"); ax.set_ylabel("USD / oz"); ax.legend(ncol=5)
 fig.tight_layout()
 save_fig(fig, "10_test_predictions.png")
@@ -849,7 +871,7 @@ save_fig(fig, "10_test_predictions.png")
 fig, axes = plt.subplots(1, 2, figsize=(14, 4))
 for name, pred in predictions.items():
     err = y_test - pred
-    axes[0].plot(test.index, err, lw=0.6, alpha=0.8, label=name)
+    axes[0].plot(test_target_dates, err, lw=0.6, alpha=0.8, label=name)
     axes[1].hist(err, bins=50, alpha=0.4, label=name)
 axes[0].set_title("Forecast error over the test period (USD)"); axes[1].set_title("Error distribution"); axes[0].legend()
 fig.tight_layout()
@@ -882,7 +904,8 @@ else:
 summary = {
     "data_file": DATA_FILE.name, "clean_rows": len(df), "supervised_rows": len(frame),
     "split": split_info.astype(str).to_dict(), "arima_order": ARIMA_ORDER, "xgboost_params": XGB_PARAMS,
-    "xgboost_best_iteration": int(best_xgb.best_iteration), "lstm_params": LSTM_PARAMS, "device": DEVICE,
+    "xgboost_best_iteration": int(best_xgb.best_iteration), "xgboost_boosting_rounds": int(best_xgb.best_iteration) + 1,
+    "lstm_params": LSTM_PARAMS, "device": DEVICE,
     "selection_criterion": "validation RMSE", "best_model": best_name, "metrics": metrics.round(4).to_dict(orient="index"),
 }
 (RESULTS_DIR / "run_summary.json").write_text(json.dumps(summary, indent=2, default=str))
