@@ -50,17 +50,19 @@ Empat pendekatan diajukan. Semuanya dievaluasi dengan metrik yang sama pada data
 
 ## Data Understanding
 
-Dataset yang digunakan adalah **Gold Price Master Dataset (2015–2026) XAU/USD** yang dipublikasikan di Kaggle [14]. Data ini bersumber dari Yahoo Finance dan dikumpulkan menggunakan pustaka `yfinance`.
+Dataset yang digunakan adalah data historis harian **harga emas berjangka COMEX (ticker `GC=F`)** dari **Yahoo Finance** [14]. Data diunduh menggunakan pustaka Python `yfinance` [15] melalui skrip `scripts/download_data.py`, lalu disimpan sebagai `data/raw/xauusd_daily.csv`.
 
-- **Tautan dataset:** https://www.kaggle.com/datasets/aminasalamt/gold-price-master-dataset-2015-2026-lxauusd
+- **Tautan sumber data:** https://finance.yahoo.com/quote/GC%3DF/history/
+- **Cara mengunduh ulang:** `python scripts/download_data.py` (ticker `GC=F`, 1 Januari 2015 – 30 April 2026; tanggal akhir bersifat eksklusif)
+- **Tanggal akses:** 17 September 2026
 - **Format:** satu berkas CSV, data kuantitatif harian (hanya hari perdagangan)
 - **Jumlah data:** **2.847 baris × 6 kolom** (`Date`, `Open`, `High`, `Low`, `Close`, `Volume`)
 - **Rentang waktu:** 2 Januari 2015 sampai 29 April 2026
 - **Lisensi:** hanya untuk riset dan pendidikan (mengikuti ketentuan Yahoo Finance)
 
-Catatan: data harga emas Yahoo Finance berasal dari kontrak berjangka emas COMEX (`GC=F`), yang bergerak sangat dekat dengan harga spot XAU/USD tetapi tidak identik.
+Catatan: `GC=F` adalah kontrak berjangka emas COMEX bulan terdekat (*front-month*). Harganya bergerak sangat dekat dengan harga spot XAU/USD tetapi tidak identik, sehingga pada proyek ini digunakan sebagai proksi harga emas XAU/USD.
 
-### Variabel-variabel pada Gold Price Master Dataset adalah sebagai berikut:
+### Variabel-variabel pada dataset harga emas Yahoo Finance (GC=F) adalah sebagai berikut:
 
 - **Date** (`datetime64`): tanggal hari perdagangan. Akhir pekan dan hari libur bursa tidak tercatat.
 - **Open** (`float64`): harga pembukaan emas pada hari tersebut (USD per troy ounce).
@@ -269,7 +271,7 @@ Uji Ljung-Box pada residual menghasilkan p-value 0,394 (lag 5), 0,318 (lag 10), 
 
 Sebanyak 12 kombinasi diuji. Kombinasi dengan **RMSE harga validasi** terendah dipilih.
 
-**Hasil:** parameter terbaik `max_depth` = 5, `learning_rate` = 0,05, `min_child_weight` = 1, dengan 30 pohon (iterasi terbaik). RMSE validasi = 24,674, dengan waktu *tuning* total 1,45 detik. Pada 8 kombinasi teratas, *early stopping* berhenti sangat awal (3–42 pohon), dan RMSE validasinya hanya berkisar 24,674–24,692. Artinya, *hyperparameter* hampir tidak berpengaruh karena model tidak menemukan pola yang kuat untuk dipelajari.
+**Hasil:** parameter terbaik `max_depth` = 5, `learning_rate` = 0,05, `min_child_weight` = 1, dengan 30 pohon (iterasi terbaik). RMSE validasi = 24,674, dengan waktu *tuning* total 0,94 detik. Pada 8 kombinasi teratas, *early stopping* berhenti sangat awal (3–42 pohon), dan RMSE validasinya hanya berkisar 24,674–24,692. Artinya, *hyperparameter* hampir tidak berpengaruh karena model tidak menemukan pola yang kuat untuk dipelajari.
 
 ![Feature importance XGBoost](figures/07_xgb_feature_importance.png)
 
@@ -309,7 +311,7 @@ class LSTMRegressor(nn.Module):
 | 60 | 32 | 1 | 22 | 1,1036 | 24,631 |
 | 60 | 32 | 2 | 11 | 1,1049 | 24,650 |
 
-**Hasil:** konfigurasi terbaik W = 30, H = 64, L = 2, dengan RMSE validasi 24,584. Total waktu *tuning* 8 konfigurasi adalah 17,34 detik di GPU.
+**Hasil:** konfigurasi terbaik W = 30, H = 64, L = 2, dengan RMSE validasi 24,584. Total waktu *tuning* 8 konfigurasi adalah 19,69 detik di GPU.
 
 ![Kurva pembelajaran LSTM](figures/08_lstm_learning_curve.png)
 
@@ -372,13 +374,13 @@ Statistik ini dikoreksi dengan faktor Harvey-Leybourne-Newbold untuk sampel keci
 
 ### Hasil Evaluasi pada Data Uji
 
-Periode uji: 13 Maret 2025 – 28 April 2026 (284 hari perdagangan). Tabel diurutkan berdasarkan RMSE validasi (kriteria pemilihan model).
+Periode uji: 13 Maret 2025 – 28 April 2026 (284 hari perdagangan). Tabel diurutkan berdasarkan RMSE validasi (kriteria pemilihan model). Kolom waktu dapat sedikit berbeda di setiap eksekusi; nilai akurasi tetap sama karena *seed* dikunci.
 
 | Model | RMSE Val | RMSE Test | MAE Test | MAPE Test (%) | Akurasi Arah (%) | Δ RMSE vs Naive (%) | Statistik DM | p-value DM | Waktu (s) |
 |---|---|---|---|---|---|---|---|---|---|
-| **LSTM (terpilih)** | **24,584** | 75,653 | **49,603** | **1,207** | 56,38 | −0,20 | −0,960 | 0,338 | 17,34 |
-| XGBoost | 24,674 | **75,545** | 49,759 | 1,209 | **57,45** | −0,35 | −0,278 | 0,781 | 1,45 |
-| ARIMA(0, 1, 0) | 24,754 | 75,808 | 49,816 | 1,212 | – | 0,00 | 0,027* | 0,979 | 4,27 |
+| **LSTM (terpilih)** | **24,584** | 75,653 | **49,603** | **1,207** | 56,38 | −0,20 | −0,960 | 0,338 | 19,69 |
+| XGBoost | 24,674 | **75,545** | 49,759 | 1,209 | **57,45** | −0,35 | −0,278 | 0,781 | 0,94 |
+| ARIMA(0, 1, 0) | 24,754 | 75,808 | 49,816 | 1,212 | – | 0,00 | 0,027* | 0,979 | 4,13 |
 | Naive | 24,754 | 75,808 | 49,816 | 1,212 | – | 0,00 | – | – | 0,0001 |
 
 \* Statistik DM ARIMA(0, 1, 0) tidak tepat nol hanya karena pembulatan numerik saat transformasi log/eksponensial; prakiraannya identik dengan *naive*.
@@ -404,7 +406,7 @@ Akurasi arah juga perlu dibaca dengan hati-hati. XGBoost (57,45%) dan LSTM (56,3
 Temuan ini konsisten dengan hipotesis pasar efisien bentuk lemah [8], dengan hasil EDA (tidak ada autokorelasi berarti pada *return*), dan dengan Makridakis dkk. [6]. Hasil ini tidak mendukung klaim keunggulan besar LSTM [3], [4] untuk kasus harga emas harian univariat.
 
 **Problem statement 3: model dengan keseimbangan akurasi dan biaya terbaik**
-Naive tidak memerlukan pelatihan (0,0001 detik). XGBoost selesai dalam 1,45 detik untuk 12 kombinasi *tuning* di CPU, ARIMA dalam 4,27 detik untuk 16 kombinasi orde, dan LSTM dalam 17,34 detik untuk 8 konfigurasi di GPU. LSTM, model yang terpilih berdasarkan validasi, membutuhkan waktu sekitar 12 kali XGBoost dan 4 kali ARIMA, serta memerlukan GPU, tanpa peningkatan akurasi yang signifikan. Karena tidak ada peningkatan signifikan, **model *naive random walk* (setara ARIMA(0, 1, 0)) direkomendasikan** untuk prakiraan titik harga emas harian. XGBoost dan LSTM baru layak dipertimbangkan jika diberi informasi tambahan di luar riwayat harga emas itu sendiri.
+Naive tidak memerlukan pelatihan (0,0001 detik). XGBoost selesai dalam 0,94 detik untuk 12 kombinasi *tuning* di CPU, ARIMA dalam 4,13 detik untuk 16 kombinasi orde, dan LSTM dalam 19,69 detik untuk 8 konfigurasi di GPU. LSTM, model yang terpilih berdasarkan validasi, membutuhkan waktu sekitar 21 kali XGBoost dan 5 kali ARIMA, serta memerlukan GPU, tanpa peningkatan akurasi yang signifikan. Karena tidak ada peningkatan signifikan, **model *naive random walk* (setara ARIMA(0, 1, 0)) direkomendasikan** untuk prakiraan titik harga emas harian. XGBoost dan LSTM baru layak dipertimbangkan jika diberi informasi tambahan di luar riwayat harga emas itu sendiri.
 
 ### Dampak terhadap Business Understanding
 
@@ -444,6 +446,8 @@ Bagi pemangku kepentingan, misalnya investor emas atau pelaku usaha perhiasan, i
 
 [13] R. J. Hyndman and G. Athanasopoulos, *Forecasting: Principles and Practice*, 3rd ed. Melbourne, Australia: OTexts, 2021. [Online]. Available: https://otexts.com/fpp3/
 
-[14] aminasalamt, "Gold Price Master Dataset (2015–2026) XAU/USD," Kaggle. [Online]. Available: https://www.kaggle.com/datasets/aminasalamt/gold-price-master-dataset-2015-2026-lxauusd
+[14] Yahoo Finance, "Gold Futures (GC=F) historical data," Yahoo Finance. [Online]. Available: https://finance.yahoo.com/quote/GC%3DF/history/ (accessed Sep. 17, 2026).
+
+[15] R. Aroussi, "yfinance: Download market data from Yahoo! Finance's API," GitHub repository. [Online]. Available: https://github.com/ranaroussi/yfinance
 
 **---Ini adalah bagian akhir laporan---**
