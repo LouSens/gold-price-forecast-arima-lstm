@@ -27,3 +27,6 @@ dist/
 .idea/
 .DS_Store
 Thumbs.db
+
+# Local planning notes
+docs/roadmap.md
