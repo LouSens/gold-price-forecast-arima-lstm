@@ -50,10 +50,10 @@ Empat pendekatan diajukan. Semuanya dievaluasi dengan metrik yang sama pada data
 
 ## Data Understanding
 
-Dataset yang digunakan adalah data historis harian **harga emas berjangka COMEX (ticker `GC=F`)** dari **Yahoo Finance** [14]. Data diunduh menggunakan pustaka Python `yfinance` [15] melalui skrip `scripts/download_data.py`, lalu disimpan sebagai `data/raw/xauusd_daily.csv`.
+Dataset yang digunakan adalah data historis harian **harga emas berjangka COMEX (ticker `GC=F`)** dari **Yahoo Finance** [14]. Data diunduh menggunakan pustaka Python `yfinance` [15] dan disimpan sebagai `data/raw/xauusd_daily.csv`.
 
 - **Tautan sumber data:** https://finance.yahoo.com/quote/GC%3DF/history/
-- **Cara mengunduh ulang:** `python scripts/download_data.py` (ticker `GC=F`, 1 Januari 2015 – 30 April 2026; tanggal akhir bersifat eksklusif)
+- **Cara mengunduh ulang:** notebook mengunduh data secara otomatis pada tahap *Data Loading* jika berkas `data/raw/xauusd_daily.csv` belum ada (ticker `GC=F`, 1 Januari 2015 – 30 April 2026; tanggal akhir bersifat eksklusif). Semua direktori keluaran (`data/raw`, `data/processed`, `reports/figures`, `results`, `models`) dibuat otomatis, sehingga notebook dapat dijalankan ulang di lingkungan baru tanpa berkas tambahan.
 - **Tanggal akses:** 17 September 2026
 - **Format:** satu berkas CSV, data kuantitatif harian (hanya hari perdagangan)
 - **Jumlah data:** **2.847 baris × 6 kolom** (`Date`, `Open`, `High`, `Low`, `Close`, `Volume`)
@@ -166,7 +166,7 @@ Setiap baris adalah **titik asal prakiraan** `t`. Fitur hanya menggunakan inform
 | Perubahan pembukaan–penutupan | `oc_change = Close / Open − 1` | arah pergerakan intrahari |
 | Kalender | `day_of_week` | efek hari dalam seminggu |
 
-Target: `target_return` $= \ln(Close_{t+1}/Close_t)$ dan `target_close` $= Close_{t+1}$. Baris dengan jendela bergulir yang belum lengkap (20 baris pertama) dan baris terakhir (yang tidak memiliki hari berikutnya) dihapus. Hasilnya **22 fitur** dan **2.826 baris** data *supervised* (2 Februari 2015 – 28 April 2026).
+Target: `target_return` $= \ln(Close_{t+1}/Close_t)$ dan `target_close` $= Close_{t+1}$. Baris dengan jendela bergulir yang belum lengkap (20 baris pertama) dan baris terakhir (yang tidak memiliki hari berikutnya) dihapus. Hasilnya **22 fitur** dan **2.826 baris** data *supervised*, dengan titik asal prediksi 2 Februari 2015 – 28 April 2026 dan harga target (hari berikutnya) 3 Februari 2015 – 29 April 2026.
 
 ```python
 out[f"ret_lag_{k}"] = ret.shift(k)                     # hanya data masa lalu / hari ini
@@ -177,11 +177,13 @@ out["target_return"] = np.log(close.shift(-1) / close)  # target = hari berikutn
 
 ### 4. Pembagian Data Secara Kronologis
 
-| Subset | Proporsi | Jumlah baris | Periode | Harga min–maks (USD) |
-|---|---|---|---|---|
-| Train | 80% | 2.260 | 2 Feb 2015 – 26 Jan 2024 | 1.050,80 – 2.093,10 |
-| Validation | 10% | 282 | 29 Jan 2024 – 12 Mar 2025 | 2.004,30 – 2.963,20 |
-| Test | 10% | 284 | 13 Mar 2025 – 28 Apr 2026 | 2.973,60 – 5.318,40 |
+Setiap baris adalah **titik asal** prediksi `t`, sedangkan harga yang diprediksi (**target**) adalah harga penutupan pada hari perdagangan berikutnya `t+1`. Karena itu, periode titik asal dan periode target dibedakan:
+
+| Subset | Proporsi | Jumlah baris | Periode titik asal (`t`) | Periode target (`t+1`) | Harga penutupan titik asal min–maks (USD) |
+|---|---|---|---|---|---|
+| Train | 80% | 2.260 | 2 Feb 2015 – 26 Jan 2024 | 3 Feb 2015 – 29 Jan 2024 | 1.050,80 – 2.093,10 |
+| Validation | 10% | 282 | 29 Jan 2024 – 12 Mar 2025 | 30 Jan 2024 – 13 Mar 2025 | 2.004,30 – 2.963,20 |
+| Test | 10% | 284 | 13 Mar 2025 – 28 Apr 2026 | 14 Mar 2025 – 29 Apr 2026 | 2.973,60 – 5.318,40 |
 
 ![Pembagian data](figures/05_split.png)
 
@@ -271,7 +273,7 @@ Uji Ljung-Box pada residual menghasilkan p-value 0,394 (lag 5), 0,318 (lag 10), 
 
 Sebanyak 12 kombinasi diuji. Kombinasi dengan **RMSE harga validasi** terendah dipilih.
 
-**Hasil:** parameter terbaik `max_depth` = 5, `learning_rate` = 0,05, `min_child_weight` = 1, dengan 30 pohon (iterasi terbaik). RMSE validasi = 24,674, dengan waktu *tuning* total 0,94 detik. Pada 8 kombinasi teratas, *early stopping* berhenti sangat awal (3–42 pohon), dan RMSE validasinya hanya berkisar 24,674–24,692. Artinya, *hyperparameter* hampir tidak berpengaruh karena model tidak menemukan pola yang kuat untuk dipelajari.
+**Hasil:** parameter terbaik `max_depth` = 5, `learning_rate` = 0,05, `min_child_weight` = 1, dengan `best_iteration` = 30. Nilai `best_iteration` pada XGBoost menggunakan indeks yang dimulai dari nol, sehingga model terpilih memprediksi menggunakan **31 *boosting rounds*** (31 pohon). RMSE validasi = 24,674, dengan waktu *tuning* total 1,24 detik. Pada 8 kombinasi teratas, *early stopping* berhenti sangat awal (4–43 *boosting rounds*), dan RMSE validasinya hanya berkisar 24,674–24,692. Artinya, *hyperparameter* hampir tidak berpengaruh karena model tidak menemukan pola yang kuat untuk dipelajari.
 
 ![Feature importance XGBoost](figures/07_xgb_feature_importance.png)
 
@@ -311,7 +313,7 @@ class LSTMRegressor(nn.Module):
 | 60 | 32 | 1 | 22 | 1,1036 | 24,631 |
 | 60 | 32 | 2 | 11 | 1,1049 | 24,650 |
 
-**Hasil:** konfigurasi terbaik W = 30, H = 64, L = 2, dengan RMSE validasi 24,584. Total waktu *tuning* 8 konfigurasi adalah 19,69 detik di GPU.
+**Hasil:** konfigurasi terbaik W = 30, H = 64, L = 2, dengan RMSE validasi 24,584. Total waktu *tuning* 8 konfigurasi adalah 17,87 detik di GPU.
 
 ![Kurva pembelajaran LSTM](figures/08_lstm_learning_curve.png)
 
@@ -374,13 +376,13 @@ Statistik ini dikoreksi dengan faktor Harvey-Leybourne-Newbold untuk sampel keci
 
 ### Hasil Evaluasi pada Data Uji
 
-Periode uji: 13 Maret 2025 – 28 April 2026 (284 hari perdagangan). Tabel diurutkan berdasarkan RMSE validasi (kriteria pemilihan model). Kolom waktu dapat sedikit berbeda di setiap eksekusi; nilai akurasi tetap sama karena *seed* dikunci.
+Periode uji: titik asal prediksi 13 Maret 2025 – 28 April 2026, dengan harga yang diprediksi (target) pada 14 Maret 2025 – 29 April 2026 (284 prakiraan *one-step-ahead*). Grafik prakiraan di bawah menampilkan setiap prakiraan pada **tanggal target**-nya. Tabel diurutkan berdasarkan RMSE validasi (kriteria pemilihan model). Kolom waktu dapat sedikit berbeda di setiap eksekusi; nilai akurasi tetap sama karena *seed* dikunci.
 
 | Model | RMSE Val | RMSE Test | MAE Test | MAPE Test (%) | Akurasi Arah (%) | Δ RMSE vs Naive (%) | Statistik DM | p-value DM | Waktu (s) |
 |---|---|---|---|---|---|---|---|---|---|
-| **LSTM (terpilih)** | **24,584** | 75,653 | **49,603** | **1,207** | 56,38 | −0,20 | −0,960 | 0,338 | 19,69 |
-| XGBoost | 24,674 | **75,545** | 49,759 | 1,209 | **57,45** | −0,35 | −0,278 | 0,781 | 0,94 |
-| ARIMA(0, 1, 0) | 24,754 | 75,808 | 49,816 | 1,212 | – | 0,00 | 0,027* | 0,979 | 4,13 |
+| **LSTM (terpilih)** | **24,584** | 75,653 | **49,603** | **1,207** | 56,38 | −0,20 | −0,960 | 0,338 | 17,87 |
+| XGBoost | 24,674 | **75,545** | 49,759 | 1,209 | **57,45** | −0,35 | −0,278 | 0,781 | 1,24 |
+| ARIMA(0, 1, 0) | 24,754 | 75,808 | 49,816 | 1,212 | – | 0,00 | 0,027* | 0,979 | 4,40 |
 | Naive | 24,754 | 75,808 | 49,816 | 1,212 | – | 0,00 | – | – | 0,0001 |
 
 \* Statistik DM ARIMA(0, 1, 0) tidak tepat nol hanya karena pembulatan numerik saat transformasi log/eksponensial; prakiraannya identik dengan *naive*.
@@ -406,7 +408,7 @@ Akurasi arah juga perlu dibaca dengan hati-hati. XGBoost (57,45%) dan LSTM (56,3
 Temuan ini konsisten dengan hipotesis pasar efisien bentuk lemah [8], dengan hasil EDA (tidak ada autokorelasi berarti pada *return*), dan dengan Makridakis dkk. [6]. Hasil ini tidak mendukung klaim keunggulan besar LSTM [3], [4] untuk kasus harga emas harian univariat.
 
 **Problem statement 3: model dengan keseimbangan akurasi dan biaya terbaik**
-Naive tidak memerlukan pelatihan (0,0001 detik). XGBoost selesai dalam 0,94 detik untuk 12 kombinasi *tuning* di CPU, ARIMA dalam 4,13 detik untuk 16 kombinasi orde, dan LSTM dalam 19,69 detik untuk 8 konfigurasi di GPU. LSTM, model yang terpilih berdasarkan validasi, membutuhkan waktu sekitar 21 kali XGBoost dan 5 kali ARIMA, serta memerlukan GPU, tanpa peningkatan akurasi yang signifikan. Karena tidak ada peningkatan signifikan, **model *naive random walk* (setara ARIMA(0, 1, 0)) direkomendasikan** untuk prakiraan titik harga emas harian. XGBoost dan LSTM baru layak dipertimbangkan jika diberi informasi tambahan di luar riwayat harga emas itu sendiri.
+Naive tidak memerlukan pelatihan (0,0001 detik). XGBoost selesai dalam 1,24 detik untuk 12 kombinasi *tuning* di CPU, ARIMA dalam 4,40 detik untuk 16 kombinasi orde, dan LSTM dalam 17,87 detik untuk 8 konfigurasi di GPU. LSTM, model yang terpilih berdasarkan validasi, membutuhkan waktu sekitar 14 kali XGBoost dan 4 kali ARIMA, serta memerlukan GPU, tanpa peningkatan akurasi yang signifikan. Karena tidak ada peningkatan signifikan, **model *naive random walk* (setara ARIMA(0, 1, 0)) direkomendasikan** untuk prakiraan titik harga emas harian. XGBoost dan LSTM baru layak dipertimbangkan jika diberi informasi tambahan di luar riwayat harga emas itu sendiri.
 
 ### Dampak terhadap Business Understanding
 
