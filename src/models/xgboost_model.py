@@ -45,7 +45,9 @@ class XGBReturnForecaster:
             model.fit(X_train, y_train, eval_set=[(X_val, y_val)], verbose=False)
             price_pred = returns_to_price(close_val, model.predict(X_val))
             score = rmse(target_close_val, price_pred)
-            records.append({**params, "best_iteration": model.best_iteration, "val_rmse": score})
+            # best_iteration is zero-based: the model predicts with best_iteration + 1 boosting rounds
+            records.append({**params, "best_iteration": model.best_iteration,
+                            "boosting_rounds": model.best_iteration + 1, "val_rmse": score})
             if score < best_score:
                 best_score, self.model_, self.best_params_ = score, model, params
         self.tuning_results_ = pd.DataFrame(records).sort_values("val_rmse").reset_index(drop=True)

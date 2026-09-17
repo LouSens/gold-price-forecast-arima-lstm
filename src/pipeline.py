@@ -117,26 +117,32 @@ def run(cfg: Config, data_path: Path | None = None, skip_lstm: bool = False, pre
 
     metrics.round(4).to_csv(paths.results_dir / "metrics.csv")
     (paths.results_dir / "metrics.md").write_text(metrics.round(4).to_markdown())
-    pd.DataFrame({"date_origin": test.index, "actual_next_close": y_true, **predictions}).to_csv(
+    # A forecast made at origin t predicts the close of the next trading day (the target date).
+    target_dates = df.index[df.index.get_indexer(test.index) + 1]
+    pd.DataFrame({"origin_date": test.index, "target_date": target_dates, "actual_next_close": y_true, **predictions}).to_csv(
         paths.results_dir / "test_predictions.csv", index=False
     )
     (paths.results_dir / "run_summary.json").write_text(json.dumps({
         "data_source": str(source),
         "quality": {k: str(v) for k, v in quality.as_dict().items()},
         "rows": {"clean": len(df), "train": len(train), "val": len(val), "test": len(test)},
-        "periods": {name: [str(s.index[0].date()), str(s.index[-1].date())] for name, s in
-                    (("train", train), ("val", val), ("test", test))},
+        "origin_periods": {name: [str(s.index[0].date()), str(s.index[-1].date())] for name, s in
+                           (("train", train), ("val", val), ("test", test))},
+        "target_periods": {name: [str(df.index[df.index.get_loc(s.index[0]) + 1].date()),
+                                  str(df.index[df.index.get_loc(s.index[-1]) + 1].date())] for name, s in
+                           (("train", train), ("val", val), ("test", test))},
         "stationarity": stationarity,
         "selection_criterion": "validation RMSE",
         "best_model": best_model,
         "arima_order": arima.order_,
         "xgboost_best_params": xgb.best_params_,
+        "xgboost_boosting_rounds": int(xgb.model_.best_iteration) + 1,
         "lstm_best_params": None if skip_lstm else lstm.best_params_,
     }, indent=2, default=float))
 
-    viz.plot_predictions(test.index, y_true, predictions, path=fig / "09_test_predictions.png")
-    viz.plot_predictions(test.index, y_true, predictions, last_n=60, path=fig / "10_test_predictions_zoom.png")
-    viz.plot_residuals(test.index, y_true, predictions, fig / "11_residuals.png")
+    viz.plot_predictions(target_dates, y_true, predictions, path=fig / "09_test_predictions.png")
+    viz.plot_predictions(target_dates, y_true, predictions, last_n=60, path=fig / "10_test_predictions_zoom.png")
+    viz.plot_residuals(target_dates, y_true, predictions, fig / "11_residuals.png")
     viz.plot_metric_comparison(metrics, fig / "12_metric_comparison.png")
 
     log.info("\n%s", metrics.round(4).to_string())
