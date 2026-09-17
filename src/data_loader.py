@@ -1,8 +1,8 @@
-"""Load XAU/USD daily OHLCV data from CSV (Kaggle / Yahoo export) or Yahoo Finance.
+"""Load daily gold OHLCV data from CSV (yfinance export or similar) or directly from Yahoo Finance.
 
 The loader normalises the many CSV layouts found in the wild:
 
-* plain ``Date,Open,High,Low,Close,Volume`` files (Kaggle),
+* plain ``Date,Open,High,Low,Close,Volume`` files,
 * the multi-row header written by ``yfinance>=0.2.51``
   (``Price`` / ``Ticker`` / ``Date`` rows),
 * lower-case or alias column names (``price``, ``adj_close``, ``vol.``),
@@ -83,8 +83,8 @@ def resolve_data_path(preferred: str | Path) -> Path:
     if len(candidates) == 1:
         return candidates[0]
     hint = (
-        f"No dataset at {preferred}. Download the Kaggle 'Gold Price Master Dataset (2015-2026) XAU/USD' "
-        f"CSV into {preferred.parent}, or run `python scripts/download_data.py`."
+        f"No dataset at {preferred}. Run `python scripts/download_data.py` to download Yahoo Finance GC=F "
+        f"into {preferred.parent}."
     )
     if candidates:
         hint += f" Multiple CSVs found ({[c.name for c in candidates]}); pass the path explicitly."

@@ -1,8 +1,7 @@
 """Download daily gold futures (GC=F) OHLCV from Yahoo Finance into data/raw/.
 
-This is the fallback when the Kaggle "Gold Price Master Dataset (2015-2026) XAU/USD"
-CSV is not available. Both are Yahoo-sourced; Yahoo data is for research and
-education only and must not be redistributed.
+This is the data source of the project (page: https://finance.yahoo.com/quote/GC%3DF/history/).
+Yahoo data is for research and education only and must not be redistributed.
 
     python scripts/download_data.py
     python scripts/download_data.py --ticker GC=F --start 2015-01-01 --end 2026-04-30

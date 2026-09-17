@@ -41,7 +41,7 @@ def test_missing_close_column_raises(tmp_path):
 
 
 def test_resolve_data_path_hint(tmp_path):
-    with pytest.raises(FileNotFoundError, match="Kaggle"):
+    with pytest.raises(FileNotFoundError, match="download_data"):
         resolve_data_path(tmp_path / "xauusd_daily.csv")
     (tmp_path / "other.csv").write_text("Date,Close\n")
     assert resolve_data_path(tmp_path / "xauusd_daily.csv").name == "other.csv"
