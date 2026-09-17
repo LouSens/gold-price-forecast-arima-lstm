@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.venv/
+venv/
+.ipynb_checkpoints/
+
+# Data: Yahoo-sourced data may not be redistributed
+data/raw/*
+data/processed/*
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+
+# Generated artefacts
+models/*
+!models/.gitkeep
+results/*
+!results/.gitkeep
+reports/figures/pipeline/
+dist/
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

@@ -1,0 +1,16 @@
+[project]
+name = "gold-price-forecast-arima-lstm"
+version = "1.0.0"
+description = "Next-day gold (XAU/USD) price forecasting: Naive vs ARIMA vs XGBoost vs LSTM"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+filterwarnings = ["ignore::DeprecationWarning", "ignore::FutureWarning", "ignore::UserWarning"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"
