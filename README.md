@@ -1,14 +1,19 @@
-# Gold Price Forecasting: ARIMA vs XGBoost vs LSTM
+<div align="center">
 
-> Next-trading-day forecasting of gold (XAU/USD) closing prices. The project compares a naive random walk, ARIMA,
-> XGBoost and an LSTM on the same chronologically held-out test period, with significance testing, on laptop-class
-> hardware (RTX 4050, 6 GB).
+# 📈 Gold Price Forecasting
 
-![Python](https://img.shields.io/badge/python-3.10%2B-blue)
-![PyTorch](https://img.shields.io/badge/PyTorch-2.x-EE4C2C)
-![statsmodels](https://img.shields.io/badge/statsmodels-0.14-4B8BBE)
-![XGBoost](https://img.shields.io/badge/XGBoost-2.x%2F3.x-189FDD)
-![License](https://img.shields.io/badge/license-MIT-green)
+**ARIMA vs XGBoost vs LSTM on Next-Trading-Day XAU/USD**
+
+[![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
+[![PyTorch](https://img.shields.io/badge/PyTorch-2.x-EE4C2C?logo=pytorch&logoColor=white)](https://pytorch.org/)
+[![statsmodels](https://img.shields.io/badge/statsmodels-ARIMA-4B8BBE)](https://www.statsmodels.org/)
+[![XGBoost](https://img.shields.io/badge/XGBoost-2.x%20%2F%203.x-189FDD)](https://xgboost.readthedocs.io/)
+[![scikit-learn](https://img.shields.io/badge/scikit--learn-1.3%2B-F7931E?logo=scikitlearn&logoColor=white)](https://scikit-learn.org/)
+[![License](https://img.shields.io/badge/License-MIT-yellow)](LICENSE)
+
+</div>
+
+Next-trading-day forecasting of gold (XAU/USD) closing prices. The project compares a naive random walk, ARIMA, XGBoost and an LSTM on the same chronologically held-out test period, with significance testing, on laptop-class hardware (RTX 4050, 6 GB).
 
 ---
 
